@@ -4,6 +4,7 @@ import java.io.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Objects;
 
 public class UI {
     private final JFrame frame;
@@ -13,6 +14,8 @@ public class UI {
     private UI MainUI = this;
     private MsgServer MServer;
     private Thread serverThread;
+
+    private boolean serverMode = false;
 
     public UI(MsgClient _ui_MsgClient) {
         frame = new JFrame("JavaSocketChat - JSC");
@@ -35,20 +38,30 @@ public class UI {
         JLabel _connectionStatus = new JLabel("disconnected");
 
         JButton _serverButton = new JButton("start server-mode");
+        JTextField _serverPort = new JTextField(4);
 
         _serverButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 if(_serverButton.getText() == "start server-mode") {
                     try {
-                        MServer = new MsgServer(9060, MainUI);
-                        serverThread = new Thread(MServer);
-                        serverThread.start();
-                        _serverButton.setText("stop server-mode");
+                        if(Objects.equals(_serverPort.getText(), "")) {
+                            JOptionPane.showMessageDialog(frame,
+                                    "No port specified!",
+                                    "ERROR",
+                                    JOptionPane.WARNING_MESSAGE);
+                        } else {
+                            MServer = new MsgServer(Integer.parseInt(_serverPort.getText()), MainUI);
+                            serverThread = new Thread(MServer);
+                            serverThread.start();
+                            serverMode = true;
+                            _serverButton.setText("stop server-mode");
+                        }
                     } catch (IOException exc) {
                         exc.printStackTrace();
                     }
                 } else {
                     MServer.stop();
+                    serverMode = false;
                     _serverButton.setText("start server-mode");
                 }
             }
@@ -57,11 +70,15 @@ public class UI {
         _connectButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 if(_connectButton.getText() == "connect") {
-                    boolean result = ui_MsgClient.connect(_peerAddress.getText());
+                    boolean result = ui_MsgClient.connect(_peerAddress.getText(), Integer.parseInt(_serverPort.getText()));
                     if(result) {
                         _connectionStatus.setText("connected");
                         _connectButton.setText("disconnect");
                     } else {
+                        JOptionPane.showMessageDialog(frame,
+                                "Can't connect to server!",
+                                "ERROR",
+                                JOptionPane.WARNING_MESSAGE);
                         _connectionStatus.setText("disconnected");
                     }
                 } else {
@@ -87,6 +104,8 @@ public class UI {
         _gbc.gridx = 0;
         _gbc.gridy++;
         _settingsPanel.add(_serverButton, _gbc);
+        _gbc.gridx++;
+        _settingsPanel.add(_serverPort, _gbc);
 
         return _settingsPanel;
     }
@@ -123,8 +142,28 @@ public class UI {
 
         _sendMsgBtn.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                ui_MsgClient.sendMsg(_outgoingMsg.getText());
-                _outgoingMsg.setText("");
+                if(Objects.equals(_outgoingMsg.getText(), "")) {
+                    JOptionPane.showMessageDialog(frame,
+                            "No message specified!",
+                            "ERROR",
+                            JOptionPane.WARNING_MESSAGE);
+                } else {
+                    if (serverMode) {
+                        if (MServer != null) {
+                            MServer.sendMessageToClient(_outgoingMsg.getText());
+                            _outgoingMsg.setText("");
+                        } else {
+                            JOptionPane.showMessageDialog(frame,
+                                    "No server specified!",
+                                    "ERROR",
+                                    JOptionPane.WARNING_MESSAGE);
+                        }
+
+                    } else {
+                        ui_MsgClient.sendMsg(_outgoingMsg.getText());
+                        _outgoingMsg.setText("");
+                    }
+                }
             }
         });
 

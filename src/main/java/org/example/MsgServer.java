@@ -7,6 +7,7 @@ public class MsgServer implements Runnable {
     private ServerSocket serverSocket;
     private boolean isRunning = true;
     private UI MainUI;
+    private Socket socket;
 
     public MsgServer(int port, UI _mainUI) throws IOException {
         MainUI = _mainUI;
@@ -21,7 +22,7 @@ public class MsgServer implements Runnable {
         while (isRunning) {
             try {
                 // Listen for incoming connections
-                Socket socket = serverSocket.accept();
+                socket = serverSocket.accept();
                 System.out.println("Client connected: " + socket.getInetAddress().getHostAddress());
                 MainUI.addNewMsg("Client connected: " + socket.getInetAddress().getHostAddress());
 
@@ -33,6 +34,16 @@ public class MsgServer implements Runnable {
             }
         }
     }
+
+    public void sendMessageToClient(String message) {
+        try {
+            PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+            writer.println(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public void stop() {
         isRunning = false;
